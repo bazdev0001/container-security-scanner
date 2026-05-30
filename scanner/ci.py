@@ -215,7 +215,7 @@ def emit_gitlab_sast(findings: list["Finding"]) -> None:
                 "name": "Container Security Scanner",
                 "url": "https://github.com/barry-auyeung/container-security-scanner",
                 "version": "1.0.0",
-                "vendor": {"name": "Barry O Young"},
+                "vendor": {"name": "Barry Au Yeung"},
             },
             "type": "container_scanning",
             "status": "success",
