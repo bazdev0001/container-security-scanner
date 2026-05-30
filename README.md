@@ -308,7 +308,7 @@ I review PRs within a few days. For security-sensitive changes, please use GitHu
 
 MIT — see [LICENSE](LICENSE).
 
-Built by Barry Au Yeung. If this has saved you from a bad day, I am glad.
+Built by Barry Au-Yeung. If this has saved you from a bad day, I am glad.
 
 
 
