@@ -1,0 +1,92 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+.installed.cfg
+lib/
+lib64/
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Testing & coverage
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+coverage.xml
+htmlcov/
+.pytest_cache/
+nosetests.xml
+test-results.xml
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pytype/
+
+# Linting
+.ruff_cache/
+
+# Build & packaging
+*.spec
+
+# Scanner reports (generated output)
+reports/*.json
+reports/*.html
+reports/*.sarif
+
+# Trivy vulnerability DB cache
+.trivy-cache/
+trivy-cache/
+
+# Docker image tarballs
+*.tar
+*.tar.gz
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Secrets — never commit these
+*.pem
+*.key
+*.crt
+*.env
+.env.*
+secrets/
+credentials.json
+service-account.json
+
+# Pre-commit
+.pre-commit-config.yaml.bak
+
+# Logs
+*.log
+logs/

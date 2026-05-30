@@ -1,0 +1,136 @@
+name: Container Security Scan
+
+on:
+  pull_request:
+    paths:
+      - "Dockerfile*"
+      - "docker-compose*.yml"
+      - ".github/workflows/scan.yml"
+  push:
+    branches:
+      - main
+      - "release/**"
+  workflow_dispatch:
+    inputs:
+      image:
+        description: "Image to scan (default: build from Dockerfile)"
+        required: false
+        default: ""
+      fail_on:
+        description: "Severity level to fail on (CRITICAL, HIGH, MEDIUM)"
+        required: false
+        default: "CRITICAL"
+
+permissions:
+  contents: read
+  security-events: write   # required for uploading SARIF
+  pull-requests: write     # required for PR annotations
+
+jobs:
+  container-scan:
+    name: CVE Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install scanner dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+            | sh -s -- -b /usr/local/bin v0.50.1
+          trivy --version
+
+      - name: Cache Trivy vulnerability DB
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/trivy
+          key: trivy-db-${{ runner.os }}-${{ hashFiles('.trivy-db-version') }}
+          restore-keys: |
+            trivy-db-${{ runner.os }}-
+
+      - name: Build Docker image
+        id: build
+        run: |
+          IMAGE_TAG="scan-target:${{ github.sha }}"
+          docker build -t "$IMAGE_TAG" .
+          echo "image=$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Scan image
+        id: scan
+        env:
+          SCANNER_CI_MODE: github
+          SCANNER_OUTPUT_DIR: ./reports
+          SCANNER_TRIVY_CACHE_DIR: ~/.cache/trivy
+        run: |
+          python -m scanner.main scan \
+            "${{ steps.build.outputs.image }}" \
+            --ci github \
+            --format json,sarif,html \
+            --output ./reports \
+            --fail-on "${{ inputs.fail_on || 'CRITICAL' }}" \
+            ${{ github.event_name == 'pull_request' && '--ignore-unfixed' || '' }}
+        continue-on-error: true  # we handle the exit code below
+
+      - name: Upload SARIF to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ./reports/
+          category: container-security
+
+      - name: Upload scan reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scan-reports-${{ github.sha }}
+          path: ./reports/
+          retention-days: 30
+
+      - name: Post PR summary
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const reportFiles = fs.readdirSync('./reports').filter(f => f.endsWith('.json'));
+            if (reportFiles.length === 0) return;
+
+            const report = JSON.parse(fs.readFileSync(`./reports/${reportFiles[0]}`, 'utf8'));
+            const { summary, image } = report;
+            const counts = Object.entries(summary)
+              .map(([sev, n]) => `**${sev}**: ${n}`)
+              .join(' | ');
+
+            const body = [
+              '## Container Security Scan',
+              `Image: \`${image}\``,
+              '',
+              counts,
+              '',
+              report.findings.length === 0
+                ? '✅ No findings after policy filtering.'
+                : `⚠️ ${report.findings.length} finding(s) require review — see Security tab for details.`,
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+      - name: Fail if scan failed
+        if: steps.scan.outcome == 'failure'
+        run: |
+          echo "Scan step failed — CRITICAL CVEs found. See annotations above."
+          exit 1

@@ -1,0 +1,107 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "container-security-scanner"
+version = "1.0.0"
+description = "Docker image vulnerability scanner with CVE reporting and CI integration"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Barry Au Yeung", email = "barry@example.com" }]
+requires-python = ">=3.10"
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Intended Audience :: System Administrators",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Security",
+  "Topic :: Software Development :: Quality Assurance",
+]
+keywords = ["docker", "security", "cve", "trivy", "sarif", "container-scanning"]
+dependencies = [
+  "typer[all]>=0.9",
+  "rich>=13.0",
+  "pyyaml>=6.0",
+  "jinja2>=3.1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.4",
+  "pytest-cov>=4.1",
+  "pytest-mock>=3.11",
+  "ruff>=0.2",
+  "mypy>=1.8",
+  "types-PyYAML",
+  "pre-commit",
+]
+
+[project.scripts]
+scanner = "scanner.main:app"
+
+[project.urls]
+Homepage = "https://github.com/barry-auyeung/container-security-scanner"
+Repository = "https://github.com/barry-auyeung/container-security-scanner"
+Issues = "https://github.com/barry-auyeung/container-security-scanner/issues"
+
+# ---------------------------------------------------------------------------
+# Tool configuration
+# ---------------------------------------------------------------------------
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+src = ["scanner", "tests"]
+
+[tool.ruff.lint]
+select = [
+  "E",   # pycodestyle errors
+  "W",   # pycodestyle warnings
+  "F",   # pyflakes
+  "I",   # isort
+  "B",   # flake8-bugbear
+  "C4",  # flake8-comprehensions
+  "UP",  # pyupgrade
+  "N",   # pep8-naming
+  "S",   # flake8-bandit (security)
+]
+ignore = [
+  "S603",  # subprocess calls — intentional (we wrap Trivy)
+  "S607",  # partial executable path — intentional
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]  # assert is fine in tests
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+strict_optional = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"
+markers = [
+  "integration: marks tests as requiring Trivy installed (deselect with -m 'not integration')",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["scanner"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
